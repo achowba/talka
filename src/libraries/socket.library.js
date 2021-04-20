@@ -1,52 +1,53 @@
 const socketio = require('socket.io');
+const redisAdapter = require('socket.io-redis');
 const sharedSession = require('express-socket.io-session');
 
 const session = require('./session.library');
-const SocketHelper = new (require('../helpers/socket.helper'));
+const socketHelper = new (require('../helpers/socket.helper'));
 
 module.exports = function (app, server) {
 
-    const io = socketio(server);
-    app.set('socketio', io);
-
+    const io = socketio(server, {
+        cors: {
+            origin: "https://9e48627ce070.ngrok.io",
+            methods: ["GET", "POST"]
+        }
+    });
     io.use(sharedSession(session)); // socket.io middleware for accessing session data
+    io.adapter(redisAdapter({
+        host: process.env.REDIS_HOST,
+        port: process.env.REDIS_PORT,
+    }));
+    // app.set('socketio', io);
 
     io.on('connection', async (socket) => {
         console.log('New Connection!');
 
-        // socket.join('some room');
-        const user = SocketHelper.getUserFromSession(socket);
-        const receiver = JSON.stringify(socket.handshake.query.receiver)
-        console.log(receiver);
+        let user = socketHelper.getUserFromSession(socket);
+        const receiver = await socketHelper.getUserFromDB(socket.handshake.query.receiver);
+        const room = await socketHelper.createRoom(user, receiver);
+        socket.room = room;
+
+        socketHelper.joinRoom(socket, room);
 
         if (user) {
-            await SocketHelper.cacheConnectedUser(user, socket);
+            user.status = 'online';
+            let active_users = await socketHelper.addActiveUser(user, socket);
+            io.emit('active_users', active_users);
+
+            socket.on('private_message', async (data) => {
+                socket.to(socket.room.rid).emit('private_message', data);
+            });
+
+            socket.on('typing', async (data) => {
+                socket.to(socket.room.rid).emit('typing', data);
+            });
+
+            socket.on('disconnect', async () => {
+                await socketHelper.removeSocketIdFromCache(user, socket);
+                user.status = 'offline';
+                io.emit('active_users', await socketHelper.removeInactiveUser(user));
+            });
         }
-
-        socket.on('private_message', async (data) => {
-            const receiver = await SocketHelper.getUserFromCache(data.receiver._id);
-            console.log(data);
-            console.log(receiver);
-
-            receiver.socket_ids.forEach((id) => {
-                io.to(id).emit('private_message', data);
-            });
-        });
-
-        socket.on('typing', async (data) => {
-            const receiver = await SocketHelper.getUserFromCache(data.receiver._id);
-            console.log(data);
-            console.log(receiver);
-
-            receiver.socket_ids.forEach((id) => {
-                io.to(id).emit('typing', data);
-            });
-        });
-
-        socket.on('disconnect', async () => {
-            if (user) {
-                await SocketHelper.removeSocketIdFromCache(user, socket);
-            }
-        });
     });
 };

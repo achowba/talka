@@ -2,6 +2,7 @@ require("dotenv").config();
 
 require('./db')();
 
+const cors = require("cors");
 const helmet = require("helmet");
 const express = require("express");
 const passport = require("passport");
@@ -13,6 +14,7 @@ const session = require('./libraries/session.library');
 
 AuthService.init();
 
+app.use(cors());
 app.use(express.json());
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: false }));

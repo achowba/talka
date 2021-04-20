@@ -1,11 +1,13 @@
-const BASE_URL = `http://localhost:1648`;
+// const BASE_URL = `http://localhost:1648`;
+const BASE_URL = `https://9e48627ce070.ngrok.io`;
 
 sender = JSON.parse(he.decode(sender));
 receiver = JSON.parse(he.decode(receiver));
 
 const socket = io(BASE_URL, {
     query: {
-        receiver: JSON.stringify(receiver),
+        // receiver: JSON.stringify(receiver),
+        receiver: receiver._id,
     }
 });
 
@@ -48,17 +50,22 @@ socket.on('private_message', (data) => {
     renderMessage(data);
 });
 
+socket.on('active_users', (data) => {
+    // console.log(data);
+});
+
 socket.on('typing', (data) => {
-    console.log(data);
+    // console.log(data);
+    console.log(`${data.sender.username} is typing...`);
 });
 
 // render message when it is received or sent
 function renderMessage(data) {
     const receiver_id = window.location.pathname.split('/')[2];
 
-    console.log(data);
-    console.log(data.receiver._id);
-    console.log(receiver_id);
+    // console.log(data);
+    // console.log(data.receiver._id);
+    // console.log(receiver_id);
 
     const alignment = data.receiver._id === receiver_id ? 'right chat-sender' : 'left chat-receiver';
 

@@ -29,3 +29,20 @@ await Cache.set(`chat-${user._id}`, active_user); */
         // await Cache.delete(active_user._id);
     }
 }); */
+
+// store connected users
+// get connected users
+// update connected users when a user connects
+// update connected users when a user disconnects
+// update user status to offline
+
+/*
+when a user comes online
+
+1. attach socket ids
+2. store user in redis
+3. add user to active_users array
+4. store active_users in redis
+5. el
+
+*/
